@@ -116,6 +116,7 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.head("/")
 @app.get("/", response_class=HTMLResponse)
 async def index():
     with open("static/index.html", "r", encoding="utf-8") as f:
