@@ -41,20 +41,25 @@ async def fetch_theme_news(theme: str, keyword: str) -> list[str]:
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.get(url, params=params)
 
-        titles = re.findall(r"<title>(.+?)</title>", resp.text)
+        # <item> 안에서 title + link 쌍 추출
+        items = re.findall(
+            r"<item>.*?<title>(.+?)</title>.*?<link>(.+?)</link>",
+            resp.text,
+            re.DOTALL,
+        )
         results = []
-        for title in titles[2:]:
+        for title, link in items:
             cleaned = _clean_html(title)
             cleaned = re.sub(r"\s*-\s*[^\-]+$", "", cleaned)
             if cleaned:
-                results.append(cleaned)
+                results.append({"title": cleaned, "url": link.strip()})
                 if len(results) >= 5:
                     break
 
         return results
     except Exception as e:
         print(f"[뉴스] {theme} 조회 실패: {e}")
-        return ""
+        return []
 
 
 async def get_all_theme_news() -> dict[str, list[str]]:

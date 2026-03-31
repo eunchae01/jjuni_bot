@@ -104,16 +104,23 @@
 
         .news-item {
             position: absolute;
+            display: block;
             width: 100%;
             padding: 5px 14px;
             font-size: 11.5px;
             color: #aab;
+            text-decoration: none;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             opacity: 0;
             transform: translateY(10px);
             transition: opacity 0.5s, transform 0.5s;
+            cursor: pointer;
+        }
+
+        .news-item:hover {
+            color: #fff;
         }
 
         .news-item.active {
@@ -346,7 +353,7 @@
         function buildNewsHtml(theme, newsList) {
             if (!newsList || !newsList.length) return '';
             const items = newsList.map((n, i) =>
-                `<div class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}">${n}</div>`
+                `<a class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}" href="${n.url}" target="_blank" rel="noopener">${n.title}</a>`
             ).join('');
             return `<div class="theme-news" id="news-${CSS.escape(theme)}" data-count="${newsList.length}">${items}</div>`;
         }
@@ -407,7 +414,7 @@
                 const newsEl = document.getElementById(`news-${CSS.escape(theme)}`);
                 if (newsEl && info.news && info.news.length) {
                     newsEl.innerHTML = info.news.map((n, i) =>
-                        `<div class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}">${n}</div>`
+                        `<a class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}" href="${n.url}" target="_blank" rel="noopener">${n.title}</a>`
                     ).join('');
                     newsEl.dataset.count = info.news.length;
                 }
