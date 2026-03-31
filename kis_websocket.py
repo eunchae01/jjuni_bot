@@ -84,7 +84,7 @@ def build_theme_snapshot() -> dict:
         for code in stocks:
             if code in realtime_prices:
                 theme_stocks.append(realtime_prices[code])
-        theme_stocks.sort(key=lambda x: x["change_rate"], reverse=True)
+        theme_stocks.sort(key=lambda x: x["trade_amount"], reverse=True)
         total_amount = sum(s["trade_amount"] for s in theme_stocks)
         result[theme] = {
             "stocks": theme_stocks,
