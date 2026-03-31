@@ -91,19 +91,34 @@
         }
 
         .theme-news {
-            padding: 6px 14px;
-            font-size: 11.5px;
-            color: #aab;
+            position: relative;
+            height: 28px;
+            overflow: hidden;
             background: #0f1a30;
             border-bottom: 1px solid #1a3a5c;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-height: 28px;
         }
 
         .theme-news:empty {
             display: none;
+        }
+
+        .news-item {
+            position: absolute;
+            width: 100%;
+            padding: 5px 14px;
+            font-size: 11.5px;
+            color: #aab;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+
+        .news-item.active {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .theme-card[data-theme="태양광 에너지"] .total-amount {
@@ -328,10 +343,16 @@
             }
         }
 
+        function buildNewsHtml(theme, newsList) {
+            if (!newsList || !newsList.length) return '';
+            const items = newsList.map((n, i) =>
+                `<div class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}">${n}</div>`
+            ).join('');
+            return `<div class="theme-news" id="news-${CSS.escape(theme)}" data-count="${newsList.length}">${items}</div>`;
+        }
+
         function buildThemeCard(theme, info) {
-            const newsHtml = info.news
-                ? `<div class="theme-news" id="news-${CSS.escape(theme)}">${info.news}</div>`
-                : `<div class="theme-news" id="news-${CSS.escape(theme)}"></div>`;
+            const newsHtml = buildNewsHtml(theme, info.news);
             let html = `
             <div class="theme-card" data-theme="${theme}" id="theme-${CSS.escape(theme)}">
                 <div class="theme-header">
@@ -384,7 +405,12 @@
             for (const [theme, info] of Object.entries(data)) {
                 // 뉴스 업데이트
                 const newsEl = document.getElementById(`news-${CSS.escape(theme)}`);
-                if (newsEl && info.news) newsEl.textContent = info.news;
+                if (newsEl && info.news && info.news.length) {
+                    newsEl.innerHTML = info.news.map((n, i) =>
+                        `<div class="news-item${i === 0 ? ' active' : ''}" data-idx="${i}">${n}</div>`
+                    ).join('');
+                    newsEl.dataset.count = info.news.length;
+                }
 
                 // 총 거래대금 업데이트
                 const taEl = document.getElementById(`ta-${CSS.escape(theme)}`);
@@ -478,6 +504,23 @@
         }
 
         connect();
+
+        // 뉴스 배너 로테이션 (4초 간격)
+        setInterval(() => {
+            document.querySelectorAll('.theme-news').forEach(container => {
+                const count = parseInt(container.dataset.count || '0');
+                if (count <= 1) return;
+                const items = container.querySelectorAll('.news-item');
+                let activeIdx = -1;
+                items.forEach((item, i) => {
+                    if (item.classList.contains('active')) activeIdx = i;
+                });
+                const nextIdx = (activeIdx + 1) % count;
+                items.forEach((item, i) => {
+                    item.classList.toggle('active', i === nextIdx);
+                });
+            });
+        }, 4000);
     </script>
 </body>
 </html>

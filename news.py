@@ -16,7 +16,7 @@ THEME_KEYWORDS = {
     "2차전지 소재/부품": "2차전지 관련주",
 }
 
-_news_cache: dict[str, str] = {}
+_news_cache: dict[str, list[str]] = {}
 _cache_time: float = 0
 
 
@@ -28,8 +28,8 @@ def _clean_html(text: str) -> str:
     return text.strip()
 
 
-async def fetch_theme_news(theme: str, keyword: str) -> str:
-    """Google News RSS에서 테마 관련 최신 뉴스 1건"""
+async def fetch_theme_news(theme: str, keyword: str) -> list[str]:
+    """Google News RSS에서 테마 관련 최신 뉴스 최대 5건"""
     try:
         url = "https://news.google.com/rss/search"
         params = {
@@ -42,21 +42,22 @@ async def fetch_theme_news(theme: str, keyword: str) -> str:
             resp = await client.get(url, params=params)
 
         titles = re.findall(r"<title>(.+?)</title>", resp.text)
-        # 첫 2개는 RSS 피드 제목이므로 스킵
+        results = []
         for title in titles[2:]:
             cleaned = _clean_html(title)
-            # 출처 제거 (제목 - 출처 형식)
             cleaned = re.sub(r"\s*-\s*[^\-]+$", "", cleaned)
             if cleaned:
-                return cleaned
+                results.append(cleaned)
+                if len(results) >= 5:
+                    break
 
-        return ""
+        return results
     except Exception as e:
         print(f"[뉴스] {theme} 조회 실패: {e}")
         return ""
 
 
-async def get_all_theme_news() -> dict[str, str]:
+async def get_all_theme_news() -> dict[str, list[str]]:
     """모든 테마의 최신 뉴스 (5분 캐싱)"""
     global _news_cache, _cache_time
 
@@ -71,7 +72,7 @@ async def get_all_theme_news() -> dict[str, str]:
         tasks.append(fetch_theme_news(theme, keyword))
 
     results = await asyncio.gather(*tasks)
-    _news_cache = {theme: headline for theme, headline in zip(themes, results)}
+    _news_cache = {theme: headlines for theme, headlines in zip(themes, results)}
     _cache_time = now
 
     fetched = sum(1 for v in _news_cache.values() if v)
