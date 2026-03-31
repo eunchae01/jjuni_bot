@@ -1,4 +1,5 @@
 """테마주 실시간 대시보드 서버"""
+import os
 import asyncio
 import json
 from contextlib import asynccontextmanager
@@ -16,7 +17,10 @@ from kis_websocket import (
     CODE_TO_NAME,
 )
 
-# 각 브라우저 클라이언트마다 큐를 가짐
+# 해외 서버(Render 등)에서는 KIS WebSocket 차단됨 → REST 폴링 사용
+# 로컬에서는 USE_WEBSOCKET=1 로 실시간 WebSocket 사용 가능
+USE_KIS_WS = os.getenv("USE_WEBSOCKET", "0") == "1"
+
 _client_queues: dict[WebSocket, asyncio.Queue] = {}
 
 
@@ -27,7 +31,6 @@ def enqueue_all():
         return
     message = json.dumps(snapshot, ensure_ascii=False)
     for q in _client_queues.values():
-        # 큐가 쌓이면 오래된 것 버리고 최신만 유지
         while not q.empty():
             try:
                 q.get_nowait()
@@ -36,8 +39,28 @@ def enqueue_all():
         q.put_nowait(message)
 
 
+async def poll_rest_prices():
+    """REST API로 전 종목 시세를 주기적으로 갱신 (5초 간격)"""
+    while True:
+        for code in ALL_CODES:
+            try:
+                data = await get_stock_price(code)
+                if data:
+                    if not data["name"]:
+                        data["name"] = CODE_TO_NAME.get(code, "")
+                    realtime_prices[code] = data
+                await asyncio.sleep(0.05)
+            except Exception as e:
+                print(f"[REST 폴링] {code} 실패: {e}")
+
+        if _client_queues:
+            enqueue_all()
+
+        await asyncio.sleep(5)
+
+
 async def periodic_broadcast():
-    """1초마다 브라우저에 최신 데이터 푸시"""
+    """1초마다 브라우저에 최신 데이터 푸시 (KIS WS 모드용)"""
     while True:
         await asyncio.sleep(1)
         if _client_queues:
@@ -74,11 +97,19 @@ async def lifespan(app: FastAPI):
         await load_initial_prices()
     except Exception as e:
         print(f"[초기화] 초기 로드 실패: {e}")
-    ws_task = asyncio.create_task(kis_ws_connect(on_kis_update))
-    bc_task = asyncio.create_task(periodic_broadcast())
+
+    tasks = []
+    if USE_KIS_WS:
+        print("[모드] KIS WebSocket 실시간 모드")
+        tasks.append(asyncio.create_task(kis_ws_connect(on_kis_update)))
+        tasks.append(asyncio.create_task(periodic_broadcast()))
+    else:
+        print("[모드] REST API 폴링 모드 (5초 간격)")
+        tasks.append(asyncio.create_task(poll_rest_prices()))
+
     yield
-    ws_task.cancel()
-    bc_task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -98,12 +129,10 @@ async def websocket_endpoint(ws: WebSocket):
     _client_queues[ws] = queue
 
     try:
-        # 즉시 현재 스냅샷 전송
         snapshot = build_theme_snapshot()
         if snapshot:
             await ws.send_text(json.dumps(snapshot, ensure_ascii=False))
 
-        # 큐에서 메시지 꺼내서 전송 (receive 대기 안 함)
         while True:
             message = await queue.get()
             await ws.send_text(message)
