@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jjuni_bot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #16213e, #0f3460);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e94560;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            color: #fff;
+        }
+
+        .header .status {
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .header .status .live {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .theme-card {
+            background: #16213e;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #1a3a5c;
+            transition: transform 0.2s;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-2px);
+            border-color: #e94560;
+        }
+
+        .theme-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            font-weight: bold;
+            font-size: 15px;
+            color: #fff;
+        }
+
+        .theme-header .total-amount {
+            font-size: 13px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* 테마별 색상 */
+        .theme-card[data-theme="로봇"] .theme-header { background: linear-gradient(90deg, #e94560, #c0392b); }
+        .theme-card[data-theme="반도체"] .theme-header { background: linear-gradient(90deg, #2980b9, #3498db); }
+        .theme-card[data-theme="2차전지"] .theme-header { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+        .theme-card[data-theme="AI/소프트웨어"] .theme-header { background: linear-gradient(90deg, #8e44ad, #9b59b6); }
+        .theme-card[data-theme="바이오"] .theme-header { background: linear-gradient(90deg, #d35400, #e67e22); }
+        .theme-card[data-theme="우주항공"] .theme-header { background: linear-gradient(90deg, #2c3e50, #34495e); }
+        .theme-card[data-theme="신재생에너지"] .theme-header { background: linear-gradient(90deg, #16a085, #1abc9c); }
+        .theme-card[data-theme="자산주"] .theme-header { background: linear-gradient(90deg, #f39c12, #f1c40f); color: #333; }
+
+        .total-amount {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        .theme-card[data-theme="자산주"] .total-amount {
+            background: rgba(0,0,0,0.15);
+            color: #333;
+        }
+
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .stock-table th {
+            font-size: 11px;
+            color: #888;
+            padding: 8px 10px;
+            text-align: right;
+            border-bottom: 1px solid #1a3a5c;
+            background: #0f1a30;
+        }
+
+        .stock-table th:first-child {
+            text-align: left;
+        }
+
+        .stock-table td {
+            padding: 8px 10px;
+            font-size: 13px;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stock-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .stock-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .stock-table tr:first-child td {
+            background: rgba(233, 69, 96, 0.08);
+        }
+
+        .stock-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .rank-1 { background: #e94560; color: #fff; }
+        .rank-2 { background: #f39c12; color: #fff; }
+        .rank-3 { background: #3498db; color: #fff; }
+        .rank-other { background: #444; color: #aaa; }
+
+        .price-up { color: #ff4757; }
+        .price-down { color: #3498db; }
+        .price-flat { color: #888; }
+
+        .change-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .change-badge.up { background: rgba(255,71,87,0.15); color: #ff4757; }
+        .change-badge.down { background: rgba(52,152,219,0.15); color: #3498db; }
+        .change-badge.flat { background: rgba(136,136,136,0.15); color: #888; }
+
+        .candle {
+            display: inline-block;
+            width: 6px;
+            height: 20px;
+            border-radius: 2px;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .candle.up { background: #ff4757; }
+        .candle.down { background: #3498db; }
+        .candle.flat { background: #888; }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+            font-size: 18px;
+            color: #888;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #333;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .update-flash {
+            animation: flash 0.5s ease-out;
+        }
+
+        @keyframes flash {
+            0% { background: rgba(233,69,96,0.2); }
+            100% { background: transparent; }
+        }
+
+        .flash-up {
+            animation: flashUp 0.8s ease-out !important;
+        }
+
+        .flash-down {
+            animation: flashDown 0.8s ease-out !important;
+        }
+
+        @keyframes flashUp {
+            0%, 30% { background: rgba(255,71,87,0.6); color: #fff; }
+            100% { background: transparent; }
+        }
+
+        @keyframes flashDown {
+            0%, 30% { background: rgba(52,152,219,0.6); color: #fff; }
+            100% { background: transparent; }
+        }
+
+        .price-cell {
+            transition: color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>jjuni_bot</h1>
+        <div class="status">
+            <span class="live" id="statusDot">●</span>
+            <span id="statusText">연결 중...</span>
+            <span id="updateTime"></span>
+        </div>
+    </div>
+
+    <div id="app" class="loading">
+        <div class="spinner"></div>
+        데이터를 불러오는 중...
+    </div>
+
+    <script>
+        // 이전 데이터 저장 (변동 감지용)
+        let prevPrices = {};
+
+        function formatAmount(amount) {
+            if (!amount) return '0';
+            const eok = Math.round(amount / 100000000);
+            if (eok >= 10000) return (eok / 10000).toFixed(1) + '조';
+            if (eok >= 1) return eok.toLocaleString() + '억';
+            return Math.round(amount / 10000).toLocaleString() + '만';
+        }
+
+        function formatPrice(price) {
+            return price ? price.toLocaleString() : '0';
+        }
+
+        function getChangeClass(rate) {
+            if (rate > 0) return 'up';
+            if (rate < 0) return 'down';
+            return 'flat';
+        }
+
+        function getPriceClass(rate) {
+            if (rate > 0) return 'price-up';
+            if (rate < 0) return 'price-down';
+            return 'price-flat';
+        }
+
+        function getRankClass(idx) {
+            if (idx === 0) return 'rank-1';
+            if (idx === 1) return 'rank-2';
+            if (idx === 2) return 'rank-3';
+            return 'rank-other';
+        }
+
+        function renderThemes(data) {
+            const app = document.getElementById('app');
+
+            // 최초 로드: 전체 DOM 생성
+            if (app.className === 'loading') {
+                app.className = 'grid';
+                let html = '';
+                for (const [theme, info] of Object.entries(data)) {
+                    html += buildThemeCard(theme, info);
+                }
+                app.innerHTML = html;
+            } else {
+                // 이후: 변동된 셀만 업데이트 (DOM 유지)
+                updateInPlace(data);
+            }
+
+            // 현재 가격 저장
+            for (const info of Object.values(data)) {
+                for (const s of info.stocks) {
+                    prevPrices[s.code] = s.price;
+                }
+            }
+        }
+
+        function buildThemeCard(theme, info) {
+            let html = `
+            <div class="theme-card" data-theme="${theme}" id="theme-${CSS.escape(theme)}">
+                <div class="theme-header">
+                    <span>${theme}</span>
+                    <span class="total-amount" id="ta-${CSS.escape(theme)}">${formatAmount(info.total_amount)}</span>
+                </div>
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>종목</th>
+                            <th>현재가</th>
+                            <th>등락률</th>
+                            <th>거래대금</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-${CSS.escape(theme)}">`;
+
+            for (let i = 0; i < info.stocks.length; i++) {
+                html += buildStockRow(info.stocks[i], i);
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        }
+
+        function buildStockRow(s, i) {
+            const cls = getChangeClass(s.change_rate);
+            const pCls = getPriceClass(s.change_rate);
+            const sign = s.change_rate > 0 ? '+' : '';
+            return `
+                <tr class="stock-row" data-code="${s.code}" id="row-${s.code}">
+                    <td>
+                        <div class="stock-name">
+                            <span class="candle ${cls}"></span>
+                            <span class="rank-badge ${getRankClass(i)}">${i + 1}</span>
+                            ${s.name}
+                        </div>
+                    </td>
+                    <td class="price-cell ${pCls}" id="price-${s.code}">${formatPrice(s.price)}</td>
+                    <td>
+                        <span class="change-badge ${cls}" id="change-${s.code}">
+                            ${sign}${s.change_rate.toFixed(2)}%
+                        </span>
+                    </td>
+                    <td id="amount-${s.code}">${formatAmount(s.trade_amount)}</td>
+                </tr>`;
+        }
+
+        function updateInPlace(data) {
+            for (const [theme, info] of Object.entries(data)) {
+                // 총 거래대금 업데이트
+                const taEl = document.getElementById(`ta-${CSS.escape(theme)}`);
+                if (taEl) taEl.textContent = formatAmount(info.total_amount);
+
+                // 테이블 바디 — 순위 변동 시 전체 재렌더
+                const tbody = document.getElementById(`tbody-${CSS.escape(theme)}`);
+                if (!tbody) continue;
+
+                const currentOrder = Array.from(tbody.querySelectorAll('tr[data-code]'))
+                    .map(tr => tr.dataset.code);
+                const newOrder = info.stocks.map(s => s.code);
+                const orderChanged = currentOrder.join(',') !== newOrder.join(',');
+
+                if (orderChanged) {
+                    let rowsHtml = '';
+                    for (let i = 0; i < info.stocks.length; i++) {
+                        rowsHtml += buildStockRow(info.stocks[i], i);
+                    }
+                    tbody.innerHTML = rowsHtml;
+                    continue;
+                }
+
+                // 순위 동일 — 변동된 셀만 업데이트
+                for (const s of info.stocks) {
+                    const oldPrice = prevPrices[s.code];
+                    const priceEl = document.getElementById(`price-${s.code}`);
+                    const changeEl = document.getElementById(`change-${s.code}`);
+                    const amountEl = document.getElementById(`amount-${s.code}`);
+
+                    if (!priceEl) continue;
+
+                    // 가격 변동 감지 → 행 전체 + 가격 셀 플래시
+                    if (oldPrice !== undefined && oldPrice !== s.price) {
+                        const flashClass = s.price > oldPrice ? 'flash-up' : 'flash-down';
+                        const row = document.getElementById(`row-${s.code}`);
+
+                        // 기존 애니메이션 제거 후 재적용
+                        [priceEl, row].forEach(el => {
+                            if (!el) return;
+                            el.classList.remove('flash-up', 'flash-down');
+                            void el.offsetWidth; // reflow 강제
+                            el.classList.add(flashClass);
+                        });
+                    }
+
+                    const pCls = getPriceClass(s.change_rate);
+                    priceEl.className = `price-cell ${pCls}`;
+                    priceEl.textContent = formatPrice(s.price);
+
+                    const cls = getChangeClass(s.change_rate);
+                    const sign = s.change_rate > 0 ? '+' : '';
+                    if (changeEl) {
+                        changeEl.className = `change-badge ${cls}`;
+                        changeEl.textContent = `${sign}${s.change_rate.toFixed(2)}%`;
+                    }
+                    if (amountEl) amountEl.textContent = formatAmount(s.trade_amount);
+                }
+            }
+        }
+
+        // WebSocket 연결
+        let ws;
+        let msgCount = 0;
+
+        function connect() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('statusDot').style.color = '#00ff88';
+                document.getElementById('statusText').textContent = '실시간 연결됨';
+            };
+
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                renderThemes(data);
+                msgCount++;
+                const now = new Date();
+                document.getElementById('updateTime').textContent =
+                    ` · ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')} 갱신 (${msgCount})`;
+            };
+
+            ws.onclose = () => {
+                document.getElementById('statusDot').style.color = '#ff4757';
+                document.getElementById('statusText').textContent = '재연결 중...';
+                setTimeout(connect, 3000);
+            };
+
+            ws.onerror = () => ws.close();
+        }
+
+        connect();
+    </script>
+</body>
+</html>
