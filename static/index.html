@@ -90,6 +90,22 @@
             color: #fff;
         }
 
+        .theme-news {
+            padding: 6px 14px;
+            font-size: 11.5px;
+            color: #aab;
+            background: #0f1a30;
+            border-bottom: 1px solid #1a3a5c;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 28px;
+        }
+
+        .theme-news:empty {
+            display: none;
+        }
+
         .theme-card[data-theme="태양광 에너지"] .total-amount {
             background: rgba(0,0,0,0.15);
             color: #333;
@@ -313,12 +329,16 @@
         }
 
         function buildThemeCard(theme, info) {
+            const newsHtml = info.news
+                ? `<div class="theme-news" id="news-${CSS.escape(theme)}">${info.news}</div>`
+                : `<div class="theme-news" id="news-${CSS.escape(theme)}"></div>`;
             let html = `
             <div class="theme-card" data-theme="${theme}" id="theme-${CSS.escape(theme)}">
                 <div class="theme-header">
                     <span>${theme}</span>
                     <span class="total-amount" id="ta-${CSS.escape(theme)}">${formatAmount(info.total_amount)}</span>
                 </div>
+                ${newsHtml}
                 <table class="stock-table">
                     <thead>
                         <tr>
@@ -362,6 +382,10 @@
 
         function updateInPlace(data) {
             for (const [theme, info] of Object.entries(data)) {
+                // 뉴스 업데이트
+                const newsEl = document.getElementById(`news-${CSS.escape(theme)}`);
+                if (newsEl && info.news) newsEl.textContent = info.news;
+
                 // 총 거래대금 업데이트
                 const taEl = document.getElementById(`ta-${CSS.escape(theme)}`);
                 if (taEl) taEl.textContent = formatAmount(info.total_amount);

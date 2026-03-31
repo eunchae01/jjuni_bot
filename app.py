@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from kis_api import get_stock_price, get_access_token
+from news import get_all_theme_news
 from kis_websocket import (
     kis_ws_connect,
     build_theme_snapshot,
@@ -24,11 +25,17 @@ USE_KIS_WS = os.getenv("USE_WEBSOCKET", "0") == "1"
 _client_queues: dict[WebSocket, asyncio.Queue] = {}
 
 
+_news_data: dict[str, str] = {}
+
+
 def enqueue_all():
     """모든 클라이언트 큐에 최신 스냅샷 넣기"""
     snapshot = build_theme_snapshot()
     if not snapshot:
         return
+    # 뉴스 데이터 합치기
+    for theme in snapshot:
+        snapshot[theme]["news"] = _news_data.get(theme, "")
     message = json.dumps(snapshot, ensure_ascii=False)
     for q in _client_queues.values():
         while not q.empty():
@@ -73,6 +80,17 @@ async def on_kis_update():
         enqueue_all()
 
 
+async def refresh_news():
+    """5분마다 테마별 뉴스 갱신"""
+    global _news_data
+    while True:
+        try:
+            _news_data = await get_all_theme_news()
+        except Exception as e:
+            print(f"[뉴스] 갱신 실패: {e}")
+        await asyncio.sleep(300)
+
+
 async def load_initial_prices():
     """서버 시작 시 REST API로 초기 시세 로드"""
     print("[초기화] REST API로 전 종목 시세 로딩...")
@@ -99,6 +117,9 @@ async def lifespan(app: FastAPI):
         print(f"[초기화] 초기 로드 실패: {e}")
 
     tasks = []
+    # 뉴스 수집 시작
+    tasks.append(asyncio.create_task(refresh_news()))
+
     if USE_KIS_WS:
         print("[모드] KIS WebSocket 실시간 모드")
         tasks.append(asyncio.create_task(kis_ws_connect(on_kis_update)))
@@ -132,6 +153,8 @@ async def websocket_endpoint(ws: WebSocket):
     try:
         snapshot = build_theme_snapshot()
         if snapshot:
+            for theme in snapshot:
+                snapshot[theme]["news"] = _news_data.get(theme, "")
             await ws.send_text(json.dumps(snapshot, ensure_ascii=False))
 
         while True:
